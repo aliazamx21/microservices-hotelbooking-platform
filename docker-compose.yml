@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: hotelbooking-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=test
+      - MYSQL_DATABASE=hotelbooking_db
+    ports:
+      - "3306:3306"
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: hotelbooking-kafka
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+    ports:
+      - "9092:9092"
+
+  eureka:
+    image: aliazamx21/hotelbooking-platform:eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: hotelbooking-zipkin
+    ports:
+      - "9411:9411"
+
+  spring-boot-admin:
+    image: aliazamx21/hotelbooking-platform:admin-server
+    container_name: spring-boot-admin
+    ports:
+      - "8087:8087"
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    environment:
+      - SONAR_JDBC_USERNAME=sonar
+      - SONAR_JDBC_PASSWORD=sonar
+    ports:
+      - "9000:9000"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  api-gateway:
+    image: aliazamx21/hotelbooking-platform:api-gateway
+    container_name: api-gateway
+    ports:
+      - "6969:6969"
+    environment:
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+      - JWT_SECRET=my-super-secret-local-dev-key-12345
+    depends_on:
+      - zipkin
+      - eureka
+
+  authservice:
+    image: aliazamx21/hotelbooking-platform:authservice
+    container_name: authservice
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/auth_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=test
+      - JWT_SECRET=my-super-secret-local-dev-key-12345
+    depends_on:
+      - mysql
+      - eureka
+
+  propertyservice:
+    image: aliazamx21/hotelbooking-platform:propertyservice
+    container_name: propertyservice
+    ports:
+      - "1116:1116"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/propertyservicedb?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=test
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - mysql
+      - kafka
+      - eureka
+
+  bookingservice:
+    image: aliazamx21/hotelbooking-platform:bookingservice
+    container_name: bookingservice
+    ports:
+      - "1112:1112"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/bookingdb1?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=test
+    depends_on:
+      - mysql
+      - eureka
+
+  paymentservice:
+    image: aliazamx21/hotelbooking-platform:paymentservice
+    container_name: paymentservice
+    ports:
+      - "1115:1115"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/payment_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=test
+      - STRIPE_SECRET_KEY=sk_test_mock_key_for_local_dev
+    depends_on:
+      - mysql
+      - eureka

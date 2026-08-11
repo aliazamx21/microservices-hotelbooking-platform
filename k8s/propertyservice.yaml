@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: propertyservice-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: propertyservice
+  template:
+    metadata:
+      labels:
+        app: propertyservice
+    spec:
+      containers:
+        - name: propertyservice
+          image: aliaz333/hotelbooking-platform:propertyservice
+          ports:
+            - containerPort: 1116
+          env:
+            - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
+              value: "http://zipkin:9411/api/v2/spans"
+            - name: DB_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: infra-config
+                  key: DB_ENDPOINT
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://$(DB_ENDPOINT)/propertyservicedb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "admin"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hotelbooking-secrets
+                  key: SPRING_DATASOURCE_PASSWORD
+            - name: AWS_REGION
+              value: "ap-south-1"
+            - name: AWS_S3_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: infra-config
+                  key: S3_BUCKET_NAME
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: hotelbooking-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hotelbooking-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: propertyservice
+spec:
+  type: ClusterIP
+  selector:
+    app: propertyservice
+  ports:
+    - protocol: TCP
+      port: 1116
+      targetPort: 1116

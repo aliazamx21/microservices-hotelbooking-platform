@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookingservice-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookingservice
+  template:
+    metadata:
+      labels:
+        app: bookingservice
+    spec:
+      containers:
+        - name: bookingservice
+          image: aliaz333/hotelbooking-platform:bookingservice
+          ports:
+            - containerPort: 1112
+          env:
+            - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
+              value: "http://zipkin:9411/api/v2/spans"
+            - name: DB_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: infra-config
+                  key: DB_ENDPOINT
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://$(DB_ENDPOINT)/bookingdb1?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "admin"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hotelbooking-secrets
+                  key: SPRING_DATASOURCE_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookingservice
+spec:
+  type: ClusterIP
+  selector:
+    app: bookingservice
+  ports:
+    - protocol: TCP
+      port: 1112
+      targetPort: 1112

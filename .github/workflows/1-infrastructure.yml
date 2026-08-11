@@ -1,0 +1,57 @@
+name: 1. Infrastructure Provisioning
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'terraform/**' ]
+  workflow_dispatch:
+
+jobs:
+  terraform-apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init & Apply
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}"
+
+      - name: Update kubeconfig for EKS
+        run: aws eks update-kubeconfig --region ap-south-1 --name hotelbooking-cluster
+
+      - name: Inject Infrastructure Config to Kubernetes
+        run: |
+          cd terraform
+          kubectl create configmap infra-config \
+            --from-literal=DB_ENDPOINT=$(terraform output -raw rds_endpoint) \
+            --from-literal=S3_BUCKET_NAME=$(terraform output -raw s3_bucket_name) \
+            -o yaml --dry-run=client | kubectl apply -f -
+
+      - name: Inject GitHub Secrets to Kubernetes
+        run: |
+          kubectl create secret generic hotelbooking-secrets \
+            --from-literal=SPRING_DATASOURCE_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            --from-literal=STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+            --from-literal=AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+            --from-literal=AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+            --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret docker-registry dockerhub-secret \
+            --docker-server=https://index.docker.io/v1/ \
+            --docker-username="${{ secrets.DOCKERHUB_USERNAME }}" \
+            --docker-password="${{ secrets.DOCKERHUB_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -

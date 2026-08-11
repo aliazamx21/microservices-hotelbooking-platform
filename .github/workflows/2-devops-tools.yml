@@ -1,0 +1,30 @@
+name: 2. Deploy DevOps Tools
+
+on:
+  workflow_run:
+    workflows: ["1. Infrastructure Provisioning"]
+    types: [completed]
+  push:
+    branches: [ main ]
+    paths: [ 'devops-tools/**' ]
+  workflow_dispatch:
+
+jobs:
+  deploy-tools:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Update kubeconfig & Deploy Tools
+        run: |
+          aws eks update-kubeconfig --region ap-south-1 --name hotelbooking-cluster
+          kubectl apply -f devops-tools/

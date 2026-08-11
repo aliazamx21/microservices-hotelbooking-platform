@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authservice-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authservice
+  template:
+    metadata:
+      labels:
+        app: authservice
+    spec:
+      containers:
+        - name: authservice
+          image: aliaz333/hotelbooking-platform:authservice
+          ports:
+            - containerPort: 8086
+          env:
+            - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
+              value: "http://zipkin:9411/api/v2/spans"
+            - name: DB_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: infra-config
+                  key: DB_ENDPOINT
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://$(DB_ENDPOINT)/auth_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "admin"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hotelbooking-secrets
+                  key: SPRING_DATASOURCE_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authservice
+spec:
+  type: ClusterIP
+  selector:
+    app: authservice
+  ports:
+    - protocol: TCP
+      port: 8086
+      targetPort: 8086
