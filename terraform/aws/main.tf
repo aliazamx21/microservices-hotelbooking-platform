@@ -12,7 +12,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "hotelbooking-tfstate-aliaz" # Ensure this S3 bucket exists in AWS ap-south-1
+    bucket = "hotelbooking-tfstate-aliaz"
     key    = "state/terraform.tfstate"
     region = "ap-south-1"
   }
@@ -189,7 +189,7 @@ resource "aws_security_group" "rds_sg" {
 resource "aws_db_instance" "hotelbooking_db" {
   identifier             = "hotelbooking-db"
   engine                 = "mysql"
-  engine_version         = "8.0.35" # Specified exact minor version to prevent upgrade bugs
+  engine_version         = "8.0" # <-- FIXED: Reverted to default 8.0
   instance_class         = "db.t3.micro"
   allocated_storage      = 20
   db_name                = "hotelbooking_db"
