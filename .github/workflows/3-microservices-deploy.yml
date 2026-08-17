@@ -1,8 +1,8 @@
-name: 3. Microservices Smart Deploy
+name: 3-microservices-deploy
 
 on:
   workflow_run:
-    workflows: ["2. Deploy DevOps Tools"]
+    workflows: ["2-devops-tools"]
     types: [completed]
   push:
     branches: [ main ]
@@ -10,9 +10,8 @@ on:
       - 'api-gateway/**'
       - 'authservice/**'
       - 'bookingservice/**'
-      - 'propertyservice/**'
       - 'paymentservice/**'
-      - 'notificationservice/**'
+      - 'propertyservice/**'
   workflow_dispatch:
 
 jobs:
@@ -25,7 +24,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Check for modified files (Skips unchanged services)
+      - name: Check for modified files
         uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -33,9 +32,8 @@ jobs:
             api-gateway: 'api-gateway/**'
             authservice: 'authservice/**'
             bookingservice: 'bookingservice/**'
-            propertyservice: 'propertyservice/**'
             paymentservice: 'paymentservice/**'
-            notificationservice: 'notificationservice/**'
+            propertyservice: 'propertyservice/**'
 
   build-and-deploy:
     needs: detect-changes
@@ -68,7 +66,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and Push to Single Repository with Tags
+      - name: Build and Push Docker Image
         run: |
           SERVICE_PATH="${{ matrix.service_name }}"
           [ -f "$SERVICE_PATH/Dockerfile" ] || SERVICE_PATH="$SERVICE_PATH/$SERVICE_PATH"
@@ -85,8 +83,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Update kubeconfig & Deploy
+      - name: Update Kubeconfig & Deploy to EKS
         run: |
           aws eks update-kubeconfig --region ap-south-1 --name hotelbooking-cluster
-          kubectl apply -f k8s/${{ matrix.service_name }}.yaml
+          kubectl apply -f k8s/microservices/${{ matrix.service_name }}.yaml
           kubectl rollout restart deployment ${{ matrix.service_name }}-deployment || true

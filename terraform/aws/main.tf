@@ -9,10 +9,6 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.0"
     }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.0"
-    }
   }
 
   backend "s3" {
@@ -154,7 +150,6 @@ resource "aws_eks_node_group" "nodes" {
 
   instance_types = ["t3.large"]
 
-  # Added proper naming tags so EC2 instances display cleanly in the AWS Console
   tags = {
     Name = "hotelbooking-worker-node"
   }
@@ -194,7 +189,7 @@ resource "aws_security_group" "rds_sg" {
 resource "aws_db_instance" "hotelbooking_db" {
   identifier             = "hotelbooking-db"
   engine                 = "mysql"
-  engine_version         = "8.0"
+  engine_version         = "8.0.35" # Specified exact minor version to prevent upgrade bugs
   instance_class         = "db.t3.micro"
   allocated_storage      = 20
   db_name                = "hotelbooking_db"

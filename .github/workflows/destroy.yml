@@ -1,10 +1,10 @@
-name: Destroy Infrastructure and Images
+name: destroy
 
 on:
   workflow_dispatch:
 
 jobs:
-  destroy:
+  destroy-all-clouds:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -17,56 +17,79 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      # --- 1. CLEAN UP UNTRACKED KUBERNETES RESOURCES ---
-      - name: Clean up EKS Resources (LoadBalancers & Volumes)
-        run: |
-          if aws eks update-kubeconfig --region ap-south-1 --name hotelbooking-cluster > /dev/null 2>&1; then
-            echo "EKS Cluster found. Tearing down K8s services to release AWS network resources..."
-          
-            kubectl delete svc --all --all-namespaces --ignore-not-found=true
-            kubectl delete ingress --all --all-namespaces --ignore-not-found=true
-            kubectl delete pvc --all --all-namespaces --ignore-not-found=true
-          
-            echo "Waiting 90 seconds for AWS to detach ENIs and delete K8s ELBs..."
-            sleep 90
-          else
-            echo "EKS Cluster not found or already deleted. Skipping K8s cleanup."
-          fi
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
 
-      # --- 2. LET TERRAFORM DESTROY CLOUD RESOURCES ---
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # --- 1. TEARDOWN K8S LOAD BALANCERS BEFORE TERRAFORM ---
+      - name: Clean up Azure AKS Services
+        continue-on-error: true
+        run: |
+          az aks get-credentials --resource-group hotel-devops-rg --name hotel-devops-aks || true
+          kubectl delete svc --all --all-namespaces --ignore-not-found=true
+
+      - name: Clean up AWS EKS Services
+        continue-on-error: true
+        run: |
+          aws eks update-kubeconfig --region ap-south-1 --name hotelbooking-cluster || true
+          kubectl delete svc --all --all-namespaces --ignore-not-found=true
+
+      - name: Clean up GCP GKE Services
+        continue-on-error: true
+        run: |
+          gcloud container clusters get-credentials ai-mcp-cluster --region asia-south1 || true
+          kubectl delete svc --all --all-namespaces --ignore-not-found=true
+
+      # --- 2. DESTROY TERRAFORM INFRASTRUCTURE ---
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Destroy
+      - name: Destroy Azure Infrastructure
+        if: always()
         run: |
-          cd terraform
+          cd terraform/azure
+          terraform init
+          terraform destroy -auto-approve
+
+      - name: Destroy AWS Infrastructure
+        if: always()
+        run: |
+          cd terraform/aws
           terraform init
           terraform destroy -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}"
 
-      # --- 3. DELETE ONLY THE HOTEL BOOKING DOCKER REPOSITORY ---
-      - name: Delete Hotel Booking Docker Repository
+      - name: Destroy GCP Infrastructure
+        if: always()
+        run: |
+          cd terraform/gcp
+          terraform init
+          terraform destroy -auto-approve -var="gcp_project_id=${{ secrets.GCP_PROJECT_ID }}"
+
+      # --- 3. DELETE DOCKER HUB HOTEL REPOSITORY ---
+      - name: Delete Hotel Booking Docker Hub Repository
+        if: always()
         env:
           DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKER_PASS: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          echo "Authenticating with Docker Hub..."
           TOKEN=$(curl -s -X POST -H "Content-Type: application/json" \
             -d "{\"username\": \"$DOCKER_USER\", \"password\": \"$DOCKER_PASS\"}" \
             https://hub.docker.com/v2/users/login/ | jq -r .token)
           
-          if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
-            echo "Failed to authenticate with Docker Hub. Check your credentials."
-            exit 1
-          fi
-          
-          echo "Deleting only the 'hotelbooking-platform' repository..."
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE -H "Authorization: JWT $TOKEN" \
-            "https://hub.docker.com/v2/repositories/${DOCKER_USER}/hotelbooking-platform/")
-          
-          if [ "$RESPONSE" == "202" ] || [ "$RESPONSE" == "204" ] || [ "$RESPONSE" == "200" ]; then
-            echo "✅ Docker Hub hotelbooking cleanup complete."
-          elif [ "$RESPONSE" == "404" ]; then
-            echo "✅ Repository already deleted or not found."
-          else
-            echo "⚠️ Failed to delete repository. HTTP Status: $RESPONSE"
+          if [ "$TOKEN" != "null" ] && [ -n "$TOKEN" ]; then
+            curl -s -o /dev/null -X DELETE -H "Authorization: JWT $TOKEN" \
+              "https://hub.docker.com/v2/repositories/${DOCKER_USER}/hotelbooking-platform/"
+            echo "Docker Hub hotel booking cleanup complete."
           fi

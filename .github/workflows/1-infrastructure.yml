@@ -1,13 +1,16 @@
-name: 1. Infrastructure Provisioning
+name: 1-infrastructure
 
 on:
   push:
     branches: [ main ]
-    paths: [ 'terraform/**' ]
+    paths:
+      - 'terraform/aws/**'
+      - 'terraform/gcp/**'
+      - 'terraform/azure/**'
   workflow_dispatch:
 
 jobs:
-  terraform-apply:
+  aws-infrastructure:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -23,25 +26,23 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init & Apply
+      - name: Terraform Init & Apply (AWS)
         run: |
-          cd terraform
+          cd terraform/aws
           terraform init
           terraform apply -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}"
 
-      - name: Update kubeconfig for EKS
+      - name: Update Kubeconfig for AWS EKS
         run: aws eks update-kubeconfig --region ap-south-1 --name hotelbooking-cluster
 
-      - name: Inject Infrastructure Config to Kubernetes
+      - name: Inject Infrastructure Config & Secrets to EKS
         run: |
-          cd terraform
+          cd terraform/aws
           kubectl create configmap infra-config \
             --from-literal=DB_ENDPOINT=$(terraform output -raw rds_endpoint) \
             --from-literal=S3_BUCKET_NAME=$(terraform output -raw s3_bucket_name) \
             -o yaml --dry-run=client | kubectl apply -f -
-
-      - name: Inject GitHub Secrets to Kubernetes
-        run: |
+          
           kubectl create secret generic hotelbooking-secrets \
             --from-literal=SPRING_DATASOURCE_PASSWORD="${{ secrets.DB_PASSWORD }}" \
             --from-literal=STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
@@ -50,6 +51,76 @@ jobs:
             --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
             --dry-run=client -o yaml | kubectl apply -f -
           
+          kubectl create secret docker-registry dockerhub-secret \
+            --docker-server=https://index.docker.io/v1/ \
+            --docker-username="${{ secrets.DOCKERHUB_USERNAME }}" \
+            --docker-password="${{ secrets.DOCKERHUB_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+  gcp-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init & Apply (GCP)
+        run: |
+          cd terraform/gcp
+          terraform init
+          terraform apply -auto-approve -var="gcp_project_id=${{ secrets.GCP_PROJECT_ID }}"
+
+      - name: Set up GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: 'ai-mcp-cluster'
+          location: 'asia-south1'
+
+      - name: Inject Secrets & Deploy Vector/AI to GKE
+        run: |
+          kubectl create secret generic ai-secrets \
+            --from-literal=GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret docker-registry dockerhub-secret \
+            --docker-server=https://index.docker.io/v1/ \
+            --docker-username="${{ secrets.DOCKERHUB_USERNAME }}" \
+            --docker-password="${{ secrets.DOCKERHUB_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl apply -f k8s/ai/vector-store.yaml
+          kubectl apply -f k8s/ai/ai-services.yaml
+
+  azure-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init & Apply (Azure)
+        run: |
+          cd terraform/azure
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Inject Docker Hub Secret to AKS
+        run: |
+          az aks get-credentials --resource-group hotel-devops-rg --name hotel-devops-aks
           kubectl create secret docker-registry dockerhub-secret \
             --docker-server=https://index.docker.io/v1/ \
             --docker-username="${{ secrets.DOCKERHUB_USERNAME }}" \

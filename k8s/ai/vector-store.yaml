@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qdrant-vector-db
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qdrant
+  template:
+    metadata:
+      labels:
+        app: qdrant
+    spec:
+      containers:
+        - name: qdrant
+          # Official Qdrant image directly from Docker Hub
+          image: qdrant/qdrant:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6333 # REST API
+            - containerPort: 6334 # gRPC API
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: qdrant
+  ports:
+    - name: http
+      protocol: TCP
+      port: 6333
+      targetPort: 6333
+    - name: grpc
+      protocol: TCP
+      port: 6334
+      targetPort: 6334

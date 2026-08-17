@@ -24,6 +24,13 @@ spec:
               value: "-Xms512m -Xmx512m"
           ports:
             - containerPort: 9200
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "1.5Gi"
+              cpu: "1000m"
 ---
 apiVersion: v1
 kind: Service

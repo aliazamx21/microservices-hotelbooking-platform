@@ -1,15 +1,44 @@
-# IDEs
-.metadata/
-.idea/
-.settings/
-*.project
-*.classpath
-
-# Build folders
+# =========================
+# Java & Maven Build Folders
+# =========================
 target/
 **/*/target/
 *.class
+*.jar
+*.war
+*.ear
+.mvn/wrapper/maven-wrapper.jar
 
-# Mac/Windows
+# =========================
+# IDEs (Eclipse, IntelliJ, VS Code)
+# =========================
+.metadata/
+.idea/
+*.iml
+.settings/
+*.project
+*.classpath
+.vscode/
+
+# =========================
+# Terraform (CRITICAL)
+# =========================
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.tfstate.lock.info
+crash.log
+
+# =========================
+# OS Generated & Logs
+# =========================
 .DS_Store
 Thumbs.db
+*.log
+
+# =========================
+# Secrets & Environments
+# =========================
+.env
+*.pem
+*.key

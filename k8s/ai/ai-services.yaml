@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-mcp-sandbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-mcp-sandbox
+  template:
+    metadata:
+      labels:
+        app: ai-mcp-sandbox
+    spec:
+      containers:
+        - name: ai-mcp-sandbox
+          image: aliaz333/ai-mcp-sandbox:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-mcp-sandbox-service
+spec:
+  selector:
+    app: ai-mcp-sandbox
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-mcp-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-mcp-client
+  template:
+    metadata:
+      labels:
+        app: ai-mcp-client
+    spec:
+      containers:
+        - name: ai-mcp-client
+          image: aliaz333/ai-mcp-client:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          env:
+            - name: SPRING_AI_MCP_CLIENT_STREAMABLE_HTTP_CONNECTIONS_HOTEL_SERVER_URL
+              value: "http://ai-mcp-sandbox-service:8080"
+            - name: SPRING_AI_GOOGLE_GENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-secrets
+                  key: GEMINI_API_KEY
+            - name: SPRING_AI_GOOGLE_GENAI_CHAT_OPTIONS_MODEL
+              value: "gemini-3.6-flash"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-mcp-client-service
+spec:
+  selector:
+    app: ai-mcp-client
+  ports:
+    - port: 8081
+      targetPort: 8081
+  type: LoadBalancer
