@@ -11,19 +11,18 @@ import com.bookingservice.dto.APIResponse;
 import com.bookingservice.dto.PropertyDto;
 import com.bookingservice.dto.RoomAvailability;
 
-@FeignClient(name = "PROPERTYSERVICE") 
+@FeignClient(name = "PROPERTYSERVICE", url = "${property.service.url:http://PROPERTYSERVICE}")
 public interface PropertyClient {
-	
+
 	@GetMapping("/api/v1/property/property-id")
 	public APIResponse<PropertyDto> getPropertyById(@RequestParam long id);
-	
+
 	@GetMapping("/api/v1/property/room-available-room-id")
 	public APIResponse<List<RoomAvailability>> getTotalRoomsAvailable(@RequestParam long id);
 
-
 	@GetMapping("/api/v1/property/room-id")
 	public APIResponse<com.bookingservice.dto.Rooms> getRoomType(@RequestParam long id);
-	
+
 	@PutMapping("/api/v1/property/updateRoomCount")
 	public APIResponse<Boolean> updateRoomCount(@RequestParam long id, @RequestParam LocalDate date);
 
