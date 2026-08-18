@@ -34,6 +34,11 @@ spec:
                 secretKeyRef:
                   name: hotelbooking-secrets
                   key: SPRING_DATASOURCE_PASSWORD
+            # --- ADD THESE TWO LINES FOR K8S INTER-SERVICE ROUTING ---
+            - name: PROPERTY_SERVICE_URL
+              value: "http://propertyservice:1116"
+            - name: PAYMENT_SERVICE_URL
+              value: "http://paymentservice:1115"
 ---
 apiVersion: v1
 kind: Service
