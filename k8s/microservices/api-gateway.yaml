@@ -20,6 +20,12 @@ spec:
           env:
             - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
               value: "http://zipkin:9411/api/v2/spans"
+            # ADD THESE 4 LINES BELOW:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hotelbooking-secrets
+                  key: JWT_SECRET
 ---
 apiVersion: v1
 kind: Service
