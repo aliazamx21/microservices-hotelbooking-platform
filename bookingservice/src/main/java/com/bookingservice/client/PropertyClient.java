@@ -11,7 +11,7 @@ import com.bookingservice.dto.APIResponse;
 import com.bookingservice.dto.PropertyDto;
 import com.bookingservice.dto.RoomAvailability;
 
-@FeignClient(name = "propertyservice", url = "http://propertyservice")
+@FeignClient(name = "propertyservice", url = "${property.service.url}")
 public interface PropertyClient {
 
 	@GetMapping("/api/v1/property/property-id")
