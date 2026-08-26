@@ -14,7 +14,7 @@
 
 	<properties>
 		<java.version>17</java.version>
-		<spring-ai.version>1.0.0-M3</spring-ai.version>
+		<spring-ai.version>1.0.9</spring-ai.version>
 	</properties>
 
 	<dependencies>
@@ -22,19 +22,14 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
-
-		<!-- The MCP Client (Connects to your server) -->
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-starter-mcp-client</artifactId>
 		</dependency>
-
-		<!-- The Cloud AI Brain (Google Gemini) -->
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-starter-model-google-genai</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -53,18 +48,6 @@
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
-
-	<!-- Required for Spring AI Milestone releases -->
-	<repositories>
-		<repository>
-			<id>spring-milestones</id>
-			<name>Spring Milestones</name>
-			<url>https://repo.spring.io/milestone</url>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
-		</repository>
-	</repositories>
 
 	<build>
 		<plugins>
