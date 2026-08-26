@@ -70,7 +70,8 @@ spec:
               cpu: "1000m"
               memory: "1Gi"
           env:
-            - name: SPRING_AI_MCP_CLIENT_STREAMABLE_HTTP_CONNECTIONS_HOTEL_SERVER_URL
+            # FIXED: Changed from STREAMABLE_HTTP to SSE to match the server
+            - name: SPRING_AI_MCP_CLIENT_SSE_CONNECTIONS_HOTELSERVER_URL
               value: "http://ai-mcp-sandbox-service:8080/mcp"
             - name: SPRING_AI_GOOGLE_GENAI_API_KEY
               valueFrom:
