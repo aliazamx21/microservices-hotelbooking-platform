@@ -1,0 +1,26 @@
+name: 5-GCP-Infra
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'terraform/gcp/**' ]
+  workflow_dispatch:
+
+jobs:
+  gcp-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+      - uses: hashicorp/setup-terraform@v3
+      - run: |
+          cd terraform/gcp
+          terraform init
+          terraform apply -auto-approve -var="gcp_project_id=${{ secrets.GCP_PROJECT_ID }}"
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: 'ai-mcp-cluster'
+          location: 'asia-south1'
+      - run: |
+          kubectl create secret generic ai-secrets --from-literal=GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" --dry-run=client -o yaml | kubectl apply -f -

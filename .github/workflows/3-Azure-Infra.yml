@@ -1,0 +1,20 @@
+name: 3-Azure-Infra
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'terraform/azure/**' ]
+  workflow_dispatch:
+
+jobs:
+  azure-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - uses: hashicorp/setup-terraform@v3
+      - run: |
+          cd terraform/azure
+          terraform init
+          terraform apply -auto-approve

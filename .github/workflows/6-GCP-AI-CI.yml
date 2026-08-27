@@ -1,0 +1,54 @@
+name: 6-GCP-AI-CI
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ai-mcp-client/**'
+      - 'ai-mcp-sandbox/**'
+    paths-ignore:
+      - 'k8s/**'
+  workflow_dispatch:
+
+jobs:
+  build-and-update-manifest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build, Push, and Update YAMLs
+        run: |
+          SERVICES=("ai-mcp-client" "ai-mcp-sandbox")
+          
+          for service in "${SERVICES[@]}"; do
+            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^$service/"; then
+              echo "Building $service..."
+              mvn -f "$service/pom.xml" clean package -DskipTests
+              IMAGE_TAG="${{ secrets.DOCKERHUB_USERNAME }}/$service:${{ github.sha }}"
+              docker build -t "$IMAGE_TAG" "$service"
+              docker push "$IMAGE_TAG"
+              sed -i "s|image: .*/$service.*|image: $IMAGE_TAG|g" k8s/gcp/ai-services.yaml
+            fi
+          done
+
+      - name: Commit GitOps Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/gcp/
+          git commit -m "GitOps: Update GCP AI image tags to ${{ github.sha }}" || echo "No changes to commit"
+          git push origin main
