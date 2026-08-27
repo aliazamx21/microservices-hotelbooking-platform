@@ -15,23 +15,22 @@ import java.util.List;
 public class AiTestController {
 
     private final ChatClient chatClient;
-    private final ObjectProvider<List<ToolCallbackProvider>> toolProvidersProvider;
 
     public AiTestController(ChatClient.Builder builder, ObjectProvider<List<ToolCallbackProvider>> toolProvidersProvider) {
-        this.chatClient = builder.build();
-        this.toolProvidersProvider = toolProvidersProvider;
+        List<ToolCallbackProvider> toolProviders = toolProvidersProvider.getIfAvailable();
+        if (toolProviders != null && !toolProviders.isEmpty()) {
+            ToolCallbackProvider[] callbacks = toolProviders.toArray(new ToolCallbackProvider[0]);
+            this.chatClient = builder.defaultTools((Object[]) callbacks).build();
+        } else {
+            this.chatClient = builder.build();
+        }
     }
 
     @GetMapping("/search")
     public String askAi(@RequestParam(defaultValue = "Find me a nice beach resort from the system.") String prompt) {
         try {
-            List<ToolCallbackProvider> toolProviders = toolProvidersProvider.getIfAvailable();
-            ToolCallbackProvider[] callbacks = (toolProviders != null)
-                    ? toolProviders.toArray(new ToolCallbackProvider[0])
-                    : new ToolCallbackProvider[0];
-
-            return chatClient.prompt(prompt)
-                    .toolCallbacks(callbacks)
+            return chatClient.prompt()
+                    .user(prompt)
                     .call()
                     .content();
         } catch (Exception e) {
