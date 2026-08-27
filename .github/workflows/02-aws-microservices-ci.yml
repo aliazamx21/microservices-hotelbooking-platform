@@ -1,10 +1,13 @@
-name: 6-GCP-AI-CI
+name: "02 - AWS Microservices CI"
 on:
   push:
     branches: [ main ]
     paths:
-      - 'ai-mcp-client/**'
-      - 'ai-mcp-sandbox/**'
+      - 'api-gateway/**'
+      - 'authservice/**'
+      - 'bookingservice/**'
+      - 'paymentservice/**'
+      - 'propertyservice/**'
     paths-ignore:
       - 'k8s/**'
   workflow_dispatch:
@@ -32,16 +35,16 @@ jobs:
 
       - name: Build, Push, and Update YAMLs
         run: |
-          SERVICES=("ai-mcp-client" "ai-mcp-sandbox")
+          SERVICES=("api-gateway" "authservice" "bookingservice" "paymentservice" "propertyservice")
           
           for service in "${SERVICES[@]}"; do
             if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^$service/"; then
               echo "Building $service..."
               mvn -f "$service/pom.xml" clean package -DskipTests
-              IMAGE_TAG="${{ secrets.DOCKERHUB_USERNAME }}/$service:${{ github.sha }}"
+              IMAGE_TAG="${{ secrets.DOCKERHUB_USERNAME }}/hotelbooking-platform:$service-${{ github.sha }}"
               docker build -t "$IMAGE_TAG" "$service"
               docker push "$IMAGE_TAG"
-              sed -i "s|image: .*/$service.*|image: $IMAGE_TAG|g" k8s/gcp/ai-services.yaml
+              sed -i "s|image: .*/hotelbooking-platform:$service.*|image: $IMAGE_TAG|g" k8s/aws/$service.yaml
             fi
           done
 
@@ -49,6 +52,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/gcp/
-          git commit -m "GitOps: Update GCP AI image tags to ${{ github.sha }}" || echo "No changes to commit"
+          git add k8s/aws/
+          git commit -m "GitOps: Update AWS image tags to ${{ github.sha }}" || echo "No changes to commit"
           git push origin main

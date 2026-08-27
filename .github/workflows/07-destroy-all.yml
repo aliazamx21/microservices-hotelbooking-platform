@@ -1,4 +1,4 @@
-name: 7-Destroy-All
+name: "07 - Destroy All Infrastructure"
 on:
   workflow_dispatch:
 

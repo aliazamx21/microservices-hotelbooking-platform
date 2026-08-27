@@ -1,4 +1,4 @@
-name: 1-AWS-Infra
+name: "01 - AWS Infrastructure"
 on:
   push:
     branches: [ main ]

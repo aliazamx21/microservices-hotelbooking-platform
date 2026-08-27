@@ -1,4 +1,4 @@
-name: 4-Azure-DevOps
+name: "04 - Azure DevOps Stack"
 on:
   push:
     branches: [ main ]

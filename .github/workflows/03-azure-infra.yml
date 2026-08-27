@@ -1,4 +1,4 @@
-name: 3-Azure-Infra
+name: "03 - Azure Infrastructure"
 on:
   push:
     branches: [ main ]
