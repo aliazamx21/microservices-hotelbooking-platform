@@ -1,142 +1,50 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ai-mcp-sandbox
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: ai-mcp-sandbox
-  template:
-    metadata:
-      labels:
-        app: ai-mcp-sandbox
-    spec:
-      imagePullSecrets:
-        - name: dockerhub-secret
-      containers:
-        - name: ai-mcp-sandbox
-          image: aliaz333/ai-mcp-sandbox:latest
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 8080
-          resources:
-            requests:
-              cpu: "250m"
-              memory: "512Mi"
-            limits:
-              cpu: "1000m"
-              memory: "1Gi"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ai-mcp-sandbox-service
-spec:
-  selector:
-    app: ai-mcp-sandbox
-  ports:
-    - port: 8080
-      targetPort: 8080
-  type: ClusterIP
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ai-mcp-client
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: ai-mcp-client
-  template:
-    metadata:
-      labels:
-        app: ai-mcp-client
-    spec:
-      imagePullSecrets:
-        - name: dockerhub-secret
-      containers:
-        - name: ai-mcp-client
-          image: aliaz333/ai-mcp-client:latest
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 8081
-          resources:
-            requests:
-              cpu: "250m"
-              memory: "512Mi"
-            limits:
-              cpu: "1000m"
-              memory: "1Gi"
-          env:
-            - name: SPRING_AI_MCP_CLIENT_SSE_CONNECTIONS_HOTELSERVER_URL
-              value: "http://ai-mcp-sandbox-service:8080/mcp"
-            - name: SPRING_AI_GOOGLE_GENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: ai-secrets
-                  key: GEMINI_API_KEY
-            - name: SPRING_AI_GOOGLE_GENAI_CHAT_OPTIONS_MODEL
-              value: "gemini-1.5-flash"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ai-mcp-client-service
-spec:
-  selector:
-    app: ai-mcp-client
-  ports:
-    - port: 8081
-      targetPort: 8081
-  type: LoadBalancer
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: qdrant-vector-db
-  namespace: default
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: qdrant
-  template:
-    metadata:
-      labels:
-        app: qdrant
-    spec:
-      containers:
-        - name: qdrant
-          image: qdrant/qdrant:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 6333
-            - containerPort: 6334
-          resources:
-            requests:
-              cpu: "500m"
-              memory: "1Gi"
-            limits:
-              cpu: "1000m"
-              memory: "2Gi"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: qdrant-service
-  namespace: default
-spec:
-  type: ClusterIP
-  selector:
-    app: qdrant
-  ports:
-    - name: http
-      protocol: TCP
-      port: 6333
-      targetPort: 6333
-    - name: grpc
-      protocol: TCP
-      port: 6334
-      targetPort: 6334
+name: "06 - GCP AI Services CI"
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ai-mcp-client/**'
+      - 'ai-mcp-sandbox/**'
+  workflow_dispatch:
+
+jobs:
+  build-and-update-manifest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build, Push, and Update YAMLs
+        run: |
+          SERVICES=("ai-mcp-client" "ai-mcp-sandbox")
+          
+          for service in "${SERVICES[@]}"; do
+            echo "Processing $service..."
+            mvn -f "$service/pom.xml" clean package -DskipTests
+            IMAGE_TAG="${{ secrets.DOCKERHUB_USERNAME }}/$service:${{ github.sha }}"
+            docker build -t "$IMAGE_TAG" "$service"
+            docker push "$IMAGE_TAG"
+            sed -i "s|image: .*/$service.*|image: $IMAGE_TAG|g" k8s/gcp/ai-services.yaml
+          done
+
+      - name: Commit GitOps Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/gcp/
+          git commit -m "GitOps: Update GCP AI image tags to ${{ github.sha }} [skip ci]" || echo "No changes to commit"
+          git push origin main
