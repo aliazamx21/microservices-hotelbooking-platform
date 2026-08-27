@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy-tools:
+  ensure-secrets:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,6 +17,10 @@ jobs:
         with:
           resource-group: 'hotel-devops-rg'
           cluster-name: 'hotel-devops-aks'
-      - run: |
-          kubectl create secret docker-registry dockerhub-secret --docker-server=https://index.docker.io/v1/ --docker-username="${{ secrets.DOCKERHUB_USERNAME }}" --docker-password="${{ secrets.DOCKERHUB_TOKEN }}" --dry-run=client -o yaml | kubectl apply -f -
-          kubectl apply -f k8s/azure/
+      - name: Ensure DockerHub Image Pull Secret Exists
+        run: |
+          kubectl create secret docker-registry dockerhub-secret \
+            --docker-server=https://index.docker.io/v1/ \
+            --docker-username="${{ secrets.DOCKERHUB_USERNAME }}" \
+            --docker-password="${{ secrets.DOCKERHUB_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
