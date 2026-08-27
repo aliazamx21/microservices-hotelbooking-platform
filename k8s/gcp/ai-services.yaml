@@ -27,6 +27,12 @@ spec:
             limits:
               cpu: "1000m"
               memory: "1Gi"
+          env:
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-secrets
+                  key: GEMINI_API_KEY
 ---
 apiVersion: v1
 kind: Service
@@ -70,7 +76,6 @@ spec:
               cpu: "1000m"
               memory: "1Gi"
           env:
-            # FIXED: Changed from STREAMABLE_HTTP to SSE to match the server
             - name: SPRING_AI_MCP_CLIENT_SSE_CONNECTIONS_HOTELSERVER_URL
               value: "http://ai-mcp-sandbox-service:8080/mcp"
             - name: SPRING_AI_GOOGLE_GENAI_API_KEY
@@ -113,8 +118,8 @@ spec:
           image: qdrant/qdrant:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 6333 # REST API
-            - containerPort: 6334 # gRPC API
+            - containerPort: 6333
+            - containerPort: 6334
           resources:
             requests:
               cpu: "500m"
