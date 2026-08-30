@@ -23,11 +23,12 @@ jobs:
           location: 'asia-south1'
         continue-on-error: true
 
-      # 1. Clean LoadBalancers to unblock VPC teardown
-      - name: Clean GCP LoadBalancers
+      # 1. Clean LoadBalancers and Persistent Volumes to unblock VPC teardown and prevent orphaned disks
+      - name: Clean GCP Resources
         continue-on-error: true
         run: |
           kubectl delete svc --all --all-namespaces --ignore-not-found=true || true
+          kubectl delete pvc --all --all-namespaces --ignore-not-found=true || true
 
       # 2. Destroy GCP Infrastructure
       - name: Destroy GCP Infrastructure

@@ -1,9 +1,10 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: qdrant-vector-db
   namespace: default
 spec:
+  serviceName: qdrant-service
   replicas: 1
   selector:
     matchLabels:
@@ -15,12 +16,14 @@ spec:
     spec:
       containers:
         - name: qdrant
-          # Official Qdrant image directly from Docker Hub
           image: qdrant/qdrant:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 6333 # REST API
-            - containerPort: 6334 # gRPC API
+            - containerPort: 6333
+            - containerPort: 6334
+          volumeMounts:
+            - name: qdrant-storage
+              mountPath: /qdrant/storage
           resources:
             requests:
               cpu: "500m"
@@ -28,6 +31,14 @@ spec:
             limits:
               cpu: "1000m"
               memory: "2Gi"
+  volumeClaimTemplates:
+    - metadata:
+        name: qdrant-storage
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 10Gi
 ---
 apiVersion: v1
 kind: Service

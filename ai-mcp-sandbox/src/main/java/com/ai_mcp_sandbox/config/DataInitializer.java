@@ -19,9 +19,22 @@ public class DataInitializer {
         return args -> {
             CompletableFuture.runAsync(() -> {
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(5000); // Wait for Qdrant to be ready
                     log.info("Starting hotel vector indexing in background...");
-                    hotelIndexingService.indexHotel();
+
+                    // FIX: Provide actual hotel data to index
+                    hotelIndexingService.indexHotel(new HotelIndexingService.HotelProperty(
+                            "h-001", "GCP Grand Resort", "Mumbai",
+                            "A luxurious 5-star hotel with cloud-native amenities and oceanic views.",
+                            300.00, 4.9
+                    ));
+
+                    hotelIndexingService.indexHotel(new HotelIndexingService.HotelProperty(
+                            "h-002", "Autopilot Boutique", "Bangalore",
+                            "Cozy tech-friendly stay with automated room services.",
+                            150.00, 4.5
+                    ));
+
                     log.info("Hotel vector indexing completed successfully.");
                 } catch (Exception e) {
                     log.error("Warning: Initial indexing failed: {}", e.getMessage());
