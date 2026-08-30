@@ -56,14 +56,14 @@ public class VectorStoreConfig {
 				List<Embedding> embeddings = new ArrayList<>();
 				int index = 0;
 				for (String text : request.getInstructions()) {
-					List<Float> vector = getEmbeddingVector(text);
+					float[] vector = getEmbeddingVector(text);
 					embeddings.add(new Embedding(vector, index++));
 				}
 				return new EmbeddingResponse(embeddings);
 			}
 
 			@Override
-			public List<Float> embed(Document document) {
+			public float[] embed(Document document) {
 				return getEmbeddingVector(document.getText());
 			}
 
@@ -72,7 +72,7 @@ public class VectorStoreConfig {
 				return 768;
 			}
 
-			private List<Float> getEmbeddingVector(String text) {
+			private float[] getEmbeddingVector(String text) {
 				try {
 					String url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" + geminiApiKey;
 					Map<String, Object> body = Map.of(
@@ -88,13 +88,16 @@ public class VectorStoreConfig {
 
 					JsonNode jsonNode = objectMapper.readTree(response);
 					JsonNode values = jsonNode.path("embedding").path("values");
-					List<Float> vector = new ArrayList<>();
-					if (values.isArray()) {
+
+					if (values != null && values.isArray()) {
+						float[] vector = new float[values.size()];
+						int i = 0;
 						for (JsonNode val : values) {
-							vector.add((float) val.asDouble());
+							vector[i++] = (float) val.asDouble();
 						}
+						return vector;
 					}
-					return vector;
+					return new float[0];
 				} catch (Exception e) {
 					throw new RuntimeException("Failed to generate Gemini embedding", e);
 				}
