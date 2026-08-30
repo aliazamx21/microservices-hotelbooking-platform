@@ -48,3 +48,18 @@ jobs:
           git add k8s/gcp/
           git commit -m "GitOps: Update GCP AI image tags to ${{ github.sha }} [skip ci]" || echo "No changes to commit"
           git push origin main
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: 'ai-mcp-cluster'
+          location: 'asia-south1'
+
+      - name: Deploy Updated Manifests to GKE
+        run: |
+          kubectl apply -f k8s/gcp/

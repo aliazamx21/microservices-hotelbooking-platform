@@ -28,25 +28,19 @@ jobs:
           cluster_name: 'ai-mcp-cluster'
           location: 'asia-south1'
 
-      - name: Bootstrap ArgoCD & Register GCP AI App
+      - name: Create Secrets and Deploy GCP AI Workloads
         run: |
-          # 1. Create Secrets in Default Namespace
+          # 1. Create Gemini API Secret
           kubectl create secret generic ai-secrets \
             --from-literal=GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
+          # 2. Create Docker Hub Pull Secret
           kubectl create secret docker-registry dockerhub-secret \
             --docker-server=https://index.docker.io/v1/ \
             --docker-username="${{ secrets.DOCKERHUB_USERNAME }}" \
             --docker-password="${{ secrets.DOCKERHUB_TOKEN }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
-          # 2. Install ArgoCD
-          kubectl create namespace argocd || true
-          kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-          # 3. Wait for ArgoCD CRD
-          kubectl wait --for=condition=established --timeout=60s crd/applications.argoproj.io || sleep 10
-
-          # 4. Register the GCP AI Application
-          kubectl apply -f gcp-ai-app.yaml
+          # 3. Apply GCP AI Manifests
+          kubectl apply -f k8s/gcp/
