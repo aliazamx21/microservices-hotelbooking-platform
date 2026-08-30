@@ -7,6 +7,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.concurrent.CompletableFuture;
+
 @Configuration
 public class DataInitializer {
 
@@ -15,13 +17,16 @@ public class DataInitializer {
     @Bean
     public CommandLineRunner initData(HotelIndexingService hotelIndexingService) {
         return args -> {
-            try {
-                log.info("Starting hotel vector indexing...");
-                hotelIndexingService.indexHotel();
-                log.info("Hotel vector indexing completed successfully.");
-            } catch (Exception e) {
-                log.error("Warning: Initial indexing failed on startup: {}. You can trigger indexing via POST /api/hotels/index", e.getMessage());
-            }
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Thread.sleep(5000);
+                    log.info("Starting hotel vector indexing in background...");
+                    hotelIndexingService.indexHotel();
+                    log.info("Hotel vector indexing completed successfully.");
+                } catch (Exception e) {
+                    log.error("Warning: Initial indexing failed: {}", e.getMessage());
+                }
+            });
         };
     }
 }

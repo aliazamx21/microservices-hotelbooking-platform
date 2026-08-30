@@ -107,7 +107,7 @@ public class VectorStoreConfig {
 	public QdrantVectorStore vectorStore(QdrantClient qdrantClient, EmbeddingModel embeddingModel) {
 		return QdrantVectorStore.builder(qdrantClient, embeddingModel)
 				.collectionName(collectionName)
-				.initializeSchema(true)
+				.initializeSchema(false)
 				.build();
 	}
 }
