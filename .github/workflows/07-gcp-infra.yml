@@ -1,4 +1,4 @@
-name: "05 - GCP Infrastructure"
+name: "07 - GCP Infrastructure"
 on:
   push:
     branches: [ main ]

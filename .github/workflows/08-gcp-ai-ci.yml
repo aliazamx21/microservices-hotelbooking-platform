@@ -1,4 +1,4 @@
-name: "06 - GCP AI Services CI"
+name: "08 - GCP AI Services CI"
 on:
   push:
     branches: [ main ]

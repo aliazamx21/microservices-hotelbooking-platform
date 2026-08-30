@@ -1,4 +1,4 @@
-name: "07 - Destroy All Infrastructure"
+name: "10 - Destroy All Infrastructure"
 on:
   workflow_dispatch:
 
@@ -8,7 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Always set up Terraform first so it is available regardless of earlier failures
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -36,7 +35,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 1. CLEAN UP LOAD BALANCERS BEFORE TEARDOWN (To unblock cloud VPC deletions)
+      # 1. CLEAN UP LOAD BALANCERS FIRST (Unblocks cloud VPC deletions)
       - name: Clean Azure LoadBalancers
         if: always()
         continue-on-error: true
@@ -57,7 +56,7 @@ jobs:
         run: |
           kubectl delete svc --all --all-namespaces --ignore-not-found=true || true
 
-      # 2. DESTROY TERRAFORM INFRASTRUCTURE
+      # 2. DESTROY TERRAFORM INFRASTRUCTURE ACROSS ALL CLOUDS
       - name: Destroy Azure Infrastructure
         if: always()
         run: |

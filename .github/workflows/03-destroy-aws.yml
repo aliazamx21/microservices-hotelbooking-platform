@@ -1,0 +1,34 @@
+name: "03 - Destroy AWS Infrastructure"
+on:
+  workflow_dispatch:
+
+jobs:
+  destroy-aws:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      # 1. Clean LoadBalancers to unblock VPC teardown
+      - name: Clean AWS LoadBalancers
+        continue-on-error: true
+        run: |
+          aws eks update-kubeconfig --region ap-south-1 --name hotelbooking-cluster || true
+          kubectl delete svc --all --all-namespaces --ignore-not-found=true || true
+
+      # 2. Destroy AWS Infrastructure
+      - name: Destroy AWS Infrastructure
+        if: always()
+        run: |
+          cd terraform/aws
+          terraform init
+          terraform destroy -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}"

@@ -1,0 +1,32 @@
+name: "06 - Destroy Azure Infrastructure"
+on:
+  workflow_dispatch:
+
+jobs:
+  destroy-azure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 1. Clean LoadBalancers to unblock Resource Group teardown
+      - name: Clean Azure LoadBalancers
+        continue-on-error: true
+        run: |
+          az aks get-credentials --resource-group hotel-devops-rg --name hotel-devops-aks || true
+          kubectl delete svc --all --all-namespaces --ignore-not-found=true || true
+
+      # 2. Destroy Azure Infrastructure
+      - name: Destroy Azure Infrastructure
+        if: always()
+        run: |
+          cd terraform/azure
+          terraform init
+          terraform destroy -auto-approve
