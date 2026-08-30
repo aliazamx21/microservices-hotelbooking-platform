@@ -77,7 +77,7 @@ spec:
               memory: "1Gi"
           env:
             - name: SPRING_AI_MCP_CLIENT_SSE_CONNECTIONS_HOTELSERVER_URL
-              value: "http://ai-mcp-sandbox-service:8080/mcp/sse"
+              value: "http://ai-mcp-sandbox-service:8080/mcp"
             - name: SPRING_AI_GOOGLE_GENAI_API_KEY
               valueFrom:
                 secretKeyRef:
