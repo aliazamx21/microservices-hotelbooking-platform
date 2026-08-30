@@ -1,45 +1,27 @@
 package com.ai_mcp_sandbox.config;
 
 import com.ai_mcp_sandbox.service.HotelIndexingService;
-import com.ai_mcp_sandbox.service.HotelIndexingService.HotelProperty;
-import org.springframework.boot.ApplicationRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class DataInitializer {
 
+    private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
+
     @Bean
-    public ApplicationRunner initData(HotelIndexingService indexingService) {
+    public CommandLineRunner initData(HotelIndexingService hotelIndexingService) {
         return args -> {
-            indexingService.indexHotel(new HotelProperty(
-                    "hotel-1",
-                    "Grand Palm Resort & Spa",
-                    "Goa",
-                    "Luxury beachfront resort with private cabanas, sea view infinity pool, and coastal dining.",
-                    220.0,
-                    4.8
-            ));
-
-            indexingService.indexHotel(new HotelProperty(
-                    "hotel-2",
-                    "Sunset Bay Retreat",
-                    "Kerala",
-                    "Quiet beach resort nestled among coconut palms with direct shoreline access and ayurvedic spa.",
-                    150.0,
-                    4.6
-            ));
-
-            indexingService.indexHotel(new HotelProperty(
-                    "hotel-3",
-                    "Mountain Peak Lodge",
-                    "Manali",
-                    "Snow-capped mountain chalets with fireplace and hiking trails.",
-                    110.0,
-                    4.5
-            ));
-
-            System.out.println(">>> Sample hotel properties indexed successfully into Qdrant!");
+            try {
+                log.info("Starting hotel vector indexing...");
+                hotelIndexingService.indexHotel();
+                log.info("Hotel vector indexing completed successfully.");
+            } catch (Exception e) {
+                log.error("Warning: Initial indexing failed on startup: {}. You can trigger indexing via POST /api/hotels/index", e.getMessage());
+            }
         };
     }
 }

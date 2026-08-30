@@ -14,6 +14,7 @@ import org.springframework.ai.vectorstore.qdrant.QdrantVectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
@@ -44,6 +45,7 @@ public class VectorStoreConfig {
 	}
 
 	@Bean
+	@Primary
 	public EmbeddingModel embeddingModel() {
 		RestClient restClient = RestClient.builder().build();
 		ObjectMapper objectMapper = new ObjectMapper();
@@ -74,7 +76,6 @@ public class VectorStoreConfig {
 				try {
 					String url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" + geminiApiKey;
 					Map<String, Object> body = Map.of(
-							"model", "models/text-embedding-004",
 							"content", Map.of("parts", List.of(Map.of("text", text)))
 					);
 
@@ -102,6 +103,7 @@ public class VectorStoreConfig {
 	}
 
 	@Bean
+	@Primary
 	public QdrantVectorStore vectorStore(QdrantClient qdrantClient, EmbeddingModel embeddingModel) {
 		return QdrantVectorStore.builder(qdrantClient, embeddingModel)
 				.collectionName(collectionName)
