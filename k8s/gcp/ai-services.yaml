@@ -16,7 +16,7 @@ spec:
         - name: dockerhub-secret
       containers:
         - name: ai-mcp-sandbox
-          image: aliaz333/ai-mcp-sandbox:dc4d6a02435e49534b0d77bc9bba32ef65a88c9c
+          image: aliaz333/ai-mcp-sandbox:ea74f7b41650c83e8661d39429e2d27685854399
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -64,7 +64,7 @@ spec:
         - name: dockerhub-secret
       containers:
         - name: ai-mcp-client
-          image: aliaz333/ai-mcp-client:dc4d6a02435e49534b0d77bc9bba32ef65a88c9c
+          image: aliaz333/ai-mcp-client:ea74f7b41650c83e8661d39429e2d27685854399
           imagePullPolicy: Always
           ports:
             - containerPort: 8081
