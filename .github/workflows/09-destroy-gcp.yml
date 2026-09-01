@@ -36,4 +36,4 @@ jobs:
         run: |
           cd terraform/gcp
           terraform init
-          terraform destroy -auto-approve -var="gcp_project_id=${{ secrets.GCP_PROJECT_ID }}"
+          terraform destroy -auto-approve -lock=false -var="gcp_project_id=${{ secrets.GCP_PROJECT_ID }}"
